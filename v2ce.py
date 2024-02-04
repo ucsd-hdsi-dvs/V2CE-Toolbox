@@ -340,7 +340,7 @@ if __name__ == '__main__':
         event_stream_per_frame[i]['timestamp'] += int(i * 1 / args.fps * 1e6)
         event_stream.append(event_stream_per_frame[i])
     event_stream = np.concatenate(event_stream)
-    logger.info(f"Generated event stream shape: , event_stream.shape")
+    logger.info(f"Generated event stream shape: , {event_stream.shape}")
     
     # Dump the event stream (numpy structured array)
     event_stream_path = op.join(args.out_folder, f'{output_name}-events.npz')
