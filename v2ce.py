@@ -270,7 +270,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input_video_path', type=str, help='The path to the input video')
     parser.add_argument('-o', '--out_folder', type=str, default='/tsukimi/v2ce-project/video_for_test', help='The folder to save the output video')
     parser.add_argument('-t', '--infer_type', type=str, default='center', help='The type of inference, can be center or pano')
-    parser.add_argument('-m', '--model_path', type=str, default='/tsukimi/v2ce-project/best_model_log/assets/v2ce_3d.pt', help='The path to the trained model')
+    parser.add_argument('-m', '--model_path', type=str, default='./weights/v2ce_3d.pt', help='The path to the trained model')
     parser.add_argument('--out_name_suffix', type=str, default='', help='The suffix of the output video name')
     parser.add_argument('--max_frame_num', type=int, default=1800, help='The maximum number of frames to process')
     parser.add_argument('--width', type=int, default=346, help='The width of the image')

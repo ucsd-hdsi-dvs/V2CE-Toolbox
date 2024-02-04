@@ -1,1 +1,3 @@
 *.pt
+*.pyc
+__pycache__/
