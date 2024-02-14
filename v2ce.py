@@ -55,7 +55,7 @@ def image_pre_processing(images, height=260):
     
     images = images.astype(np.float32)/255 
 
-    # Resize images so that the height becomes 260, and the width is scaled accordingly, and crop the center 260 x 346
+    # Resize images so that the video's height is set to `height`, and the width is scaled accordingly, and crop the center height x width
     images = np.stack([cv2.resize(img, (int(img.shape[1]/img.shape[0]*height), height)) for img in images], axis=0)
     
     # Stack images into pairs
@@ -174,6 +174,8 @@ def video_to_voxels(model, image_paths=None, vidcap=None, infer_type='center',
             images = np.stack([cv2.imread(p, cv2.IMREAD_GRAYSCALE) for p in image_paths_seq], axis=0)
         
         image_units = image_pre_processing(images, height=height)
+        resized_width = image_units.shape[-1]
+        
         input_image_batches.append(image_units[np.newaxis, ...])
         batch_idx += 1
         if batch_idx == batch_size or seq_idx == len(starting_indexes)-1:
@@ -199,7 +201,7 @@ def video_to_voxels(model, image_paths=None, vidcap=None, infer_type='center',
             
             all_pred_voxel.append(pred_voxel.cpu().detach().numpy())
         
-    all_pred_voxel = merge_voxels(all_pred_voxel, height=height, width=width, mode=mode)
+    all_pred_voxel = merge_voxels(all_pred_voxel, height=height, width=resized_width, mode=mode)
     
     logger.debug(f"predicted voxels shape: {all_pred_voxel.shape}")
     return all_pred_voxel
@@ -273,8 +275,8 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--model_path', type=str, default='./weights/v2ce_3d.pt', help='The path to the trained model')
     parser.add_argument('--out_name_suffix', type=str, default='', help='The suffix of the output video name')
     parser.add_argument('--max_frame_num', type=int, default=1800, help='The maximum number of frames to process')
-    parser.add_argument('--width', type=int, default=346, help='The width of the image')
-    parser.add_argument('--height', type=int, default=260, help='The height of the image')
+    parser.add_argument('--width', type=int, default=346, help='The width of the frame/tensor input to the model')
+    parser.add_argument('--height', type=int, default=260, help='The height of the frame/tensor input to the model')
     parser.add_argument('--write_event_frame_video', type=SBool, default=True, nargs='?', const=True, help='Whether to write the event frame video')
     parser.add_argument('-l', '--log_level', type=str, default='info', help='Logging level')
     parser.add_argument('-b', '--batch_size', type=int, default=1, help='Batch size for inference')

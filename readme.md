@@ -20,7 +20,7 @@ python v2ce.py --out_name_suffix=<YOUR_NAME_SUFFIX> --max_frame_num=<YOUR_DESIRE
 An example command:
 
 ```bash
-python v2ce.py --out_name_suffix='release' --max_frame_num=321 --infer_type=center -i '/tsukimi/v2ce-project/video_for_test/dash-cam-test-video.mp4' -b 4 --write_event_frame_video -l info
+python v2ce.py --out_name_suffix=release --max_frame_num=321 --infer_type=center -i '/tsukimi/v2ce-project/video_for_test/dash-cam-test-video.mp4' -b 4 --write_event_frame_video -l info
 ```
 
 More details can be found in the help message:
