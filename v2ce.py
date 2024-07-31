@@ -191,8 +191,10 @@ def video_to_voxels(model, image_paths=None, vidcap=None, infer_type='center',
             
             # Infer the voxel
             if infer_type == 'center':
+                out_width = width
                 pred_voxel = infer_center_image_unit(model, input_image_batches, width)
             elif infer_type == 'pano':
+                out_width = resized_width
                 pred_voxel = infer_pano_image_unit(model, input_image_batches, width)        
             else:
                 raise ValueError(f'Invalid infer_type {infer_type}')
@@ -201,7 +203,7 @@ def video_to_voxels(model, image_paths=None, vidcap=None, infer_type='center',
             
             all_pred_voxel.append(pred_voxel.cpu().detach().numpy())
         
-    all_pred_voxel = merge_voxels(all_pred_voxel, height=height, width=resized_width, mode=mode)
+    all_pred_voxel = merge_voxels(all_pred_voxel, height=height, width=out_width, mode=mode)
     
     logger.debug(f"predicted voxels shape: {all_pred_voxel.shape}")
     return all_pred_voxel
@@ -236,7 +238,7 @@ def merge_voxels(voxel_list, height=260, width=346, mode=0):
 
     return pred_voxel
     
-def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil):
+def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil, upper_bound_percentile=98):
     """
     Write the event frame video.
     Args:
@@ -248,15 +250,19 @@ def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil):
     logger.info("Writing event frame video...")
     # Write all_pred_ef into a mp4 video
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    efs = np.sum(voxel_grid, axis=(1,2))
+    efs = np.sum(voxel_grid, axis=(1,2)) # [L, H, W]
+    # get the <u>% percentile of the ef value to set the upper bound
+    efs_flatten = efs.flatten()
+    efs_flatten = efs_flatten[efs_flatten > 0]
+    efs_upper_bound = min(np.percentile(efs_flatten, upper_bound_percentile), ceil)
+    logger.info(f'Upper bound of the event frame value during video writing: {efs_upper_bound}')
+    # Clip the ef value to the upper bound
+    efs = np.clip(efs, 0, efs_upper_bound) / efs_upper_bound
     
     video_size = efs.shape[2], efs.shape[1]
     video = cv2.VideoWriter(ef_video_path, fourcc, fps, video_size)
     for i in range(efs.shape[0]):
-        if ceil is None:
-            frame = efs[i]/efs.max() 
-        else:
-            frame = np.clip(efs[i]/ceil, 0, 1)
+        frame = efs[i]#/efs.max() 
         frame = (frame*255).astype(np.uint8)
         frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
         video.write(frame)
@@ -266,8 +272,9 @@ def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--fps', type=int, default=30, help='FPS of the output video')
-    parser.add_argument('--ceil', type=int, default=10, help='The ceiling of the ef value')
     parser.add_argument('--seq_len', type=int, default=16, help='Sequence length')
+    parser.add_argument('--ceil', type=int, default=10, help='The ceiling of the ef value')
+    parser.add_argument('-u', '--upper_bound_percentile', type=int, default=98, help='The percentile of the event frame nonzero values to set the upper bound during video writing')
     parser.add_argument('-f', '--image_folder', type=str, help='The folder containing the images to infer') # default='/tsukimi/v2ce-project/video_for_test/dash-cam-test-video'
     parser.add_argument('-i', '--input_video_path', type=str, help='The path to the input video')
     parser.add_argument('-o', '--out_folder', type=str, default='/tsukimi/v2ce-project/video_for_test', help='The folder to save the output video')
@@ -323,7 +330,7 @@ if __name__ == '__main__':
         if not op.exists(args.out_folder):
             os.makedirs(args.out_folder, exist_ok=True)
         ef_video_path = op.join(args.out_folder, f'{args.infer_type}-{output_name}-pred_ef_gray.mp4')
-        write_event_frame_video(pred_voxel, ef_video_path, args.fps, args.ceil) 
+        write_event_frame_video(pred_voxel, ef_video_path, args.fps, args.ceil, args.upper_bound_percentile) 
     
     L, _, _, H, W = pred_voxel.shape
     stage2_input = pred_voxel.reshape(L, 2, 10, H, W)
