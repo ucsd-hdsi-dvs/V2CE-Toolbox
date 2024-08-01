@@ -28,3 +28,9 @@ More details can be found in the help message:
 ```bash
 python v2ce.py -h
 ```
+
+## Tips
+
+- To brighten the generated event frame video, set a smaller --ceil parameter or a larger -u/--upper_bound_percentile parameter. Normalization to [0,1] is required for video generation, and outlier values can significantly affect the event frame's maximum value. The --ceil parameter fixes the maximum event frame value, while the -u/--upper_bound_percentile parameter dynamically sets the ceiling based on the specified percentile of nonzero event frame pixels. When both parameters are set, the program uses the smaller ceiling value for normalization, setting all values above the ceiling to 1. The default values are --ceil at 10 and -u/--upper_bound_percentile at 98.
+
+- To set the --max_frame_num, if your input video has 30 FPS and you want the event frame video to cover the first 5 seconds, specify --max_frame_num as (30 * 5 + 1) = 151 frames. The additional frame accounts for the last 1/30 second, as event stream inference requires the frames before and after each time interval.
