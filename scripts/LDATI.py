@@ -194,8 +194,9 @@ def sample_voxel_statistical(y, t0=0, fps=30, pooling_type='none', pooling_kerne
         raw_additional_ts = raw_additional_ts.reshape(B*P, C, H, W, max_event_num_per_voxel)
         additional_ts = (-b + torch.sqrt((b ** 2 + 2 * k * raw_additional_ts))) / k
         additional_ts = torch.where(k==0, raw_additional_ts / fps / C, additional_ts)
-        logger.debug(f"max of additional_ts: {torch.max(additional_ts)}")
-        logger.debug(f"min of additional_ts: {torch.min(additional_ts)}")
+        if additional_ts.numel() > 0:
+            logger.debug(f"max of additional_ts: {torch.max(additional_ts)}")
+            logger.debug(f"min of additional_ts: {torch.min(additional_ts)}")
         logger.debug(f"max of raw_additional_ts: {torch.max(raw_additional_ts)}")
         logger.debug(f"min of raw_additional_ts: {torch.min(raw_additional_ts)}")
         logger.debug(f"max of k: {torch.max(k)}")
