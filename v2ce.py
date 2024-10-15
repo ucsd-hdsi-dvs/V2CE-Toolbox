@@ -277,7 +277,7 @@ if __name__ == '__main__':
     parser.add_argument('-u', '--upper_bound_percentile', type=int, default=98, help='The percentile of the event frame nonzero values to set the upper bound during video writing')
     parser.add_argument('-f', '--image_folder', type=str, help='The folder containing the images to infer') # default='/tsukimi/v2ce-project/video_for_test/dash-cam-test-video'
     parser.add_argument('-i', '--input_video_path', type=str, help='The path to the input video')
-    parser.add_argument('-o', '--out_folder', type=str, default='/tsukimi/v2ce-project/video_for_test', help='The folder to save the output video')
+    parser.add_argument('-o', '--out_folder', type=str, default='./output', help='The folder to save the output video')
     parser.add_argument('-t', '--infer_type', type=str, default='center', help='The type of inference, can be center or pano')
     parser.add_argument('-m', '--model_path', type=str, default='./weights/v2ce_3d.pt', help='The path to the trained model')
     parser.add_argument('--out_name_suffix', type=str, default='', help='The suffix of the output video name')
@@ -297,6 +297,10 @@ if __name__ == '__main__':
     # Check the input to make sure only one of image_folder and input_video_path is specified
     assert args.image_folder is not None or args.input_video_path is not None
     assert not (args.image_folder is not None and args.input_video_path is not None) 
+    if args.image_folder is not None:
+        assert os.path.exists(args.image_folder), f'{args.image_folder} does not exist'
+    if args.input_video_path is not None:
+        assert os.path.exists(args.input_video_path), f'{args.input_video_path} does not exist'
         
     name = Path(args.image_folder).name if args.image_folder is not None else Path(args.input_video_path).stem
     output_name=f'{name}-ceil_{args.ceil}-fps_{args.fps}' if args.out_name_suffix == '' else f'{name}-ceil_{args.ceil}-fps_{args.fps}-{args.out_name_suffix}'
