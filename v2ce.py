@@ -238,7 +238,7 @@ def merge_voxels(voxel_list, height=260, width=346, mode=0):
 
     return pred_voxel
     
-def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil, upper_bound_percentile=98):
+def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil, upper_bound_percentile=98, keep_polarity=True):
     """
     Write the event frame video.
     Args:
@@ -250,7 +250,14 @@ def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil, upper_bound_pe
     logger.info("Writing event frame video...")
     # Write all_pred_ef into a mp4 video
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    efs = np.sum(voxel_grid, axis=(1,2)) # [L, H, W]
+    B, P, L, H, W = voxel_grid.shape
+    if keep_polarity:
+        efs = np.sum(voxel_grid, axis=2) # [B, P(2), L, H, W]
+        # Concatenate a zero tensor to the blue channel to make the channel number 3
+        efs = np.concatenate([efs, np.zeros((B, 1, H, W))], axis=1)
+    else:
+        efs = np.sum(voxel_grid, axis=(1,2))[:,np.newaxis,...] # [B, P(2), L(10), H, W]
+        efs = np.repeat(efs, 3, axis=1) # [B, P(10), H, W]
     # get the <u>% percentile of the ef value to set the upper bound
     efs_flatten = efs.flatten()
     efs_flatten = efs_flatten[efs_flatten > 0]
@@ -258,13 +265,16 @@ def write_event_frame_video(voxel_grid, ef_video_path, fps, ceil, upper_bound_pe
     logger.info(f'Upper bound of the event frame value during video writing: {efs_upper_bound}')
     # Clip the ef value to the upper bound
     efs = np.clip(efs, 0, efs_upper_bound) / efs_upper_bound
+    # Move the Channel dimension to the last dimension
+    efs = np.moveaxis(efs, 1, -1)
+    print(efs.shape)
     
-    video_size = efs.shape[2], efs.shape[1]
+    video_size = (W, H)
     video = cv2.VideoWriter(ef_video_path, fourcc, fps, video_size)
     for i in range(efs.shape[0]):
         frame = efs[i]#/efs.max() 
         frame = (frame*255).astype(np.uint8)
-        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         video.write(frame)
     video.release()
     logger.info(f'Event frame video written to {ef_video_path}')
@@ -285,6 +295,7 @@ if __name__ == '__main__':
     parser.add_argument('--width', type=int, default=346, help='The width of the frame/tensor input to the model')
     parser.add_argument('--height', type=int, default=260, help='The height of the frame/tensor input to the model')
     parser.add_argument('--write_event_frame_video', type=SBool, default=True, nargs='?', const=True, help='Whether to write the event frame video')
+    parser.add_argument('--vis_keep_polarity', type=SBool, default=True, nargs='?', const=True, help='Whether to keep the polarity of the event frame during visualization')
     parser.add_argument('-l', '--log_level', type=str, default='info', help='Logging level')
     parser.add_argument('-b', '--batch_size', type=int, default=1, help='Batch size for inference')
     parser.add_argument('--stage2_batch_size', type=int, default=24, help='Batch size for inference')
@@ -333,8 +344,9 @@ if __name__ == '__main__':
     if args.write_event_frame_video:
         if not op.exists(args.out_folder):
             os.makedirs(args.out_folder, exist_ok=True)
-        ef_video_path = op.join(args.out_folder, f'{args.infer_type}-{output_name}-pred_ef_gray.mp4')
-        write_event_frame_video(pred_voxel, ef_video_path, args.fps, args.ceil, args.upper_bound_percentile) 
+        vis_color = 'rgb' if args.vis_keep_polarity else 'gray'
+        ef_video_path = op.join(args.out_folder, f'{args.infer_type}-{output_name}-pred_ef_{vis_color}.mp4')
+        write_event_frame_video(pred_voxel, ef_video_path, args.fps, args.ceil, args.upper_bound_percentile, args.vis_keep_polarity)
     
     L, _, _, H, W = pred_voxel.shape
     stage2_input = pred_voxel.reshape(L, 2, 10, H, W)
